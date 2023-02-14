@@ -1,0 +1,58 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "GridFunctionLib.h"
+#include "GridActor.generated.h"
+
+
+UCLASS()
+class ROGUETHIEFPROTOTYPE_API AGridActor : public AActor
+{
+	GENERATED_BODY()
+	
+public:	
+	// Sets default values for this actor's properties
+	AGridActor();
+
+protected:
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+	
+
+public:	
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+
+	UFUNCTION(BlueprintCallable)
+	FGridVector GetGridPosition();
+
+	UFUNCTION(BlueprintCallable, Category = "Grid")
+	void SetToGrid();
+
+	UFUNCTION(BlueprintNativeEvent, Category = "Grid")
+	bool MoveOnGrid(FGridVector Pos);
+	bool MoveOnGrid_Implementation(FGridVector Pos);
+
+	UFUNCTION(BlueprintCallable, Category = "Grid")
+	bool AddGridPos(FGridVector Pos);
+
+
+public:
+
+	UPROPERTY(BlueprintReadWrite)
+	class UNavModifierComponent* NavModifier;
+
+protected:
+	
+	UPROPERTY(BlueprintReadOnly)
+	class AGridSystemController* Grid;
+
+	UPROPERTY(BlueprintReadOnly)
+	struct FGridVector GridPosition;
+
+
+
+};
