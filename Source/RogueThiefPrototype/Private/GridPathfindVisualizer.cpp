@@ -198,23 +198,38 @@ bool AGridPathfindVisualizer::IsStraightLineToPos(const FGridVector& PosA, const
 
 
 	FGridVector Previous = PosA;
-	FVector TestPos = PosA.ToWorld();
+	FVector TestPos = PosA.ToWorld() + Direction * 50;
+	auto GridTestPos = FGridVector::FromFVector(TestPos);
+
+	TFunction<void()> Lambda = [&]()
+	{
+		while (FGridVector::FromFVector(TestPos) == Previous)
+		{
+			TestPos += Direction * 50;
+			GridTestPos = FGridVector::FromFVector(TestPos);
+		}
+
+	};
+
+	Lambda();
+
 	UE_LOG(LogTemp, Warning, TEXT("Start TestPos: %s"), *TestPos.ToString());
+	
 	
 	while (FGridVector::FromFVector(TestPos) != PosB)
 	{
-		auto GridTestPos = FGridVector::FromFVector(TestPos);
-					for (const auto& c : FGridVector::DiagnalConnectors(Previous, GridTestPos))
-			{
-				PrintStraight(c);
-			}
+
+		for (const auto& c : FGridVector::DiagnalConnectors(Previous, GridTestPos))
+		{
+			PrintStraight(c);
+		}
+
 		if (Positions.Contains(GridTestPos)
 			&& (Grid->ArePositionsConnected(Previous, GridTestPos)/* || Grid->IsDiagnalConnected(Previous, GridTestPos)*/)
 			)
 		{
-
 			Previous = GridTestPos;
-			TestPos += Direction * 100;
+			Lambda();
 			PrintStraight(GridTestPos);
 
 		}
