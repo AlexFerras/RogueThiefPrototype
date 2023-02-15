@@ -53,6 +53,19 @@ struct FGridVector
 		return FGridVector{ NewZ,NewX,NewY };
 	}
 
+	FORCEINLINE static TArray<FGridVector> DiagnalConnectors(const FGridVector& A, const FGridVector& B)
+	{
+		if (!((A - B).X + (A - B).Y > 1))
+			return TArray<FGridVector>();
+		TArray<FGridVector> Results;
+		// X Connector
+		Results.Add(FGridVector{ A.Z, B.X, A.Y });
+		
+		// Y Connector
+		Results.Add(FGridVector{ A.Z, A.X, B.Y });
+
+		return Results;
+	}
 
 
 	FORCEINLINE FGridVector operator- (const FGridVector B) const

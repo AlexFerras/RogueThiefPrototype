@@ -170,22 +170,24 @@ bool AGridPathfindVisualizer::OnlyTargetRemains()
 
 void AGridPathfindVisualizer::StreightenPath(FGridPath& Path)
 {
+	
 	TArray<FGridVector> PA = Path.ToArray();
 	Algo::Reverse(PA);
+	IsStraightLineToPos(PA[0], PA.Last());
 
-	TArray<FNodePtr> Nodes;
-	Nodes.Add(FNodePtr(new FGridNode(PA[0], nullptr)));
+	//TArray<FNodePtr> Nodes;
+	//Nodes.Add(FNodePtr(new FGridNode(PA[0], nullptr)));
 
-	for (int32 i = 1; i < PA.Num(); i++)
-	{
-		if (IsStraightLineToPos(Nodes.Last()->Coord, PA[i]))
-		{
-			continue;
-		}
-		else
-			Nodes.Add(FNodePtr(new FGridNode(PA[i - 1], Nodes.Last())));
-	}
-	CreatePath(Nodes.Last(), Path);
+	//for (int32 i = 1; i < PA.Num(); i++)
+	//{
+	//	if (IsStraightLineToPos(Nodes.Last()->Coord, PA[i]))
+	//	{
+	//		continue;
+	//	}
+	//	else
+	//		Nodes.Add(FNodePtr(new FGridNode(PA[i - 1], Nodes.Last())));
+	//}
+	//CreatePath(Nodes.Last(), Path);
 }
 
 bool AGridPathfindVisualizer::IsStraightLineToPos(const FGridVector& PosA, const FGridVector& PosB)
@@ -195,28 +197,32 @@ bool AGridPathfindVisualizer::IsStraightLineToPos(const FGridVector& PosA, const
 	FVector Left = FRotator{ 0, -90, 0 }.RotateVector(Direction) * 45;
 
 
-
 	FGridVector Previous = PosA;
 	FVector TestPos = PosA.ToWorld();
 	UE_LOG(LogTemp, Warning, TEXT("Start TestPos: %s"), *TestPos.ToString());
 	
-	while (TestPos != PosB.ToWorld())
+	while (FGridVector::FromFVector(TestPos) != PosB)
 	{
-		if (Positions.Contains(UGridFunctionLib::ConvertWorldToGrid(TestPos))
-			/* && Positions.Contains(FGridVector::ToFVector(TestPos + Right))
-			&& Positions.Contains(FGridVector::ToFVector(TestPos + Left))*/)
+		auto GridTestPos = FGridVector::FromFVector(TestPos);
+					for (const auto& c : FGridVector::DiagnalConnectors(Previous, GridTestPos))
+			{
+				PrintStraight(c);
+			}
+		if (Positions.Contains(GridTestPos)
+			&& (Grid->ArePositionsConnected(Previous, GridTestPos)/* || Grid->IsDiagnalConnected(Previous, GridTestPos)*/)
+			)
 		{
-			Previous = FGridVector::FromFVector(TestPos);
+
+			Previous = GridTestPos;
 			TestPos += Direction * 100;
+			PrintStraight(GridTestPos);
+
 		}
 		else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("TestPos: %s"), *TestPos.ToString());
-			UE_LOG(LogTemp, Warning, TEXT("End TestPos: %s"), *UGridFunctionLib::ConvertGridToWorld(PosB).ToString());
 			return false;
 		}
 	}
-	UE_LOG(LogTemp, Warning, TEXT("End TestPos: %s"), *UGridFunctionLib::ConvertGridToWorld(PosB).ToString());
 	return true;
 
 

@@ -129,6 +129,12 @@ bool AGridSystemController::ArePositionsConnected(const FGridVector& Pos1, const
 
 	if (!UGridFunctionLib::IsGridPositionValid(Pos1) || !UGridFunctionLib::IsGridPositionValid(Pos2))
 		return false;
+	
+	if (!IsGridPosFree(Pos1) || !IsGridPosFree(Pos2))
+	{
+		return false;
+	}
+
 
 	TArray<AActor*> Actors = GetActorsAtPos(Pos1);
 	for (auto& Actor : Actors)
@@ -179,6 +185,21 @@ bool AGridSystemController::IsGridPosFree(FGridVector Pos)
 
 	}
 	return true;
+}
+
+bool AGridSystemController::IsDiagnalConnected(const FGridVector& Pos1, const FGridVector& Pos2)
+{
+	auto Connectors = FGridVector::DiagnalConnectors(Pos1, Pos2);
+	if (Connectors.Num() == 0)
+		return false;
+
+	for (auto& c : Connectors)
+	{
+		if (!(ArePositionsConnected(Pos1, c) && ArePositionsConnected(c, Pos2)))
+			return false;
+	}
+	return true;
+
 }
 
 bool AGridSystemController::NodesContain(TArray<TSharedPtr<struct FGridNode>> Array, FGridVector Coord)

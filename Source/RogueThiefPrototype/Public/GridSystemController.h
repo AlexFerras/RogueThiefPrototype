@@ -201,6 +201,8 @@ public:
 
 	bool IsGridPosFree(FGridVector Pos);
 
+	bool IsDiagnalConnected(const FGridVector& Pos1, const FGridVector& Pos2);
+
 
 	static bool NodesContain(TArray<TSharedPtr<struct FGridNode>> Array, FGridVector Coord);
 

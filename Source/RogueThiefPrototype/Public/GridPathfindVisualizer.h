@@ -68,6 +68,9 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void PrintPath(const FGridPath& Path);
 
+	UFUNCTION(BlueprintImplementableEvent)
+	void PrintStraight(const FGridVector& Pos);
+
 	bool GetNodeOnPos(const FGridVector& Pos, FNodePtr& node);
 
 	bool OnlyTargetRemains();
