@@ -88,7 +88,9 @@ FGridVector UGridConnectorComponent::GetConnectedPos(const FGridVector& Pos)
 {
 	if (GridPosition1 == Pos)
 		return GridPosition2;
-	else
+	else if (GridPosition2 == Pos)
 		return GridPosition1;
+	else
+		return FGridVector();
 }
 

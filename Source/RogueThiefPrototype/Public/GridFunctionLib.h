@@ -39,6 +39,11 @@ struct FGridVector
 		return true;
 	}
 
+	FORCEINLINE friend bool operator ==(const FVector A, const FGridVector B)
+	{
+		return FGridVector::FromFVector(A) == B;
+	}
+
 	FORCEINLINE operator FVector() const
 	{
 		return this->ToWorld();
@@ -55,7 +60,7 @@ struct FGridVector
 
 	FORCEINLINE static TArray<FGridVector> DiagnalConnectors(const FGridVector& A, const FGridVector& B)
 	{
-		if (!((A - B).X + (A - B).Y > 1))
+		if (!IsDiagnal(A,B))
 			return TArray<FGridVector>();
 		TArray<FGridVector> Results;
 		// X Connector
@@ -67,16 +72,45 @@ struct FGridVector
 		return Results;
 	}
 
-
-	FORCEINLINE FGridVector operator- (const FGridVector B) const
+	FORCEINLINE static bool IsDiagnal(const FGridVector& A, const FGridVector& B)
 	{
-		return FGridVector{ this->X - B.X, this->Y - B.Y, this->Z - B.Z };
+		auto D = A - B;
+		return FMath::Abs(D.X) + FMath::Abs(D.Y) == 2;
+
 	}
 
-	FORCEINLINE int32 DistanceTo(const FGridVector B) const
+
+	FORCEINLINE FGridVector operator- (const FGridVector& B) const
+	{
+		FGridVector result;
+		result.Z = this->Z - B.Z;
+		result.X = this->X - B.X;
+		result.Y = this->Y - B.Y;
+		return result;
+
+	}
+
+	FORCEINLINE int32 ManhattanDistanceTo(const FGridVector& B) const
 	{
 		return FMath::Abs(this->X - B.X) + FMath::Abs(this->Y - B.Y) + FMath::Abs(this->Z - B.Z);
 	}
+
+	FORCEINLINE int32 DiagonalDistanceTo(const FGridVector& B) const
+	{
+		int32 dx = abs(B.X - this->X);
+		int32 dy = abs(B.Y - this->Y);
+
+		int32 min = FMath::Min(dx, dy);
+		int32 max = FMath::Min(dx, dy);
+
+		int32 diagonalSteps = min;
+		int32 straightSteps = max - min;
+
+		return sqrt(2) * diagonalSteps + straightSteps;
+
+
+	}
+
 
 	FORCEINLINE FGridVector operator+(const FGridVector B) const
 	{

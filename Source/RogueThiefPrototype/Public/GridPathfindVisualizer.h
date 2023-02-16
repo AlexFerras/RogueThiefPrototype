@@ -69,15 +69,20 @@ public:
 	void PrintPath(const FGridPath& Path);
 
 	UFUNCTION(BlueprintImplementableEvent)
+	void PrintStraightPath(const FGridPath& Path);
+
+	UFUNCTION(BlueprintImplementableEvent)
 	void PrintStraight(const FGridVector& Pos);
 
 	bool GetNodeOnPos(const FGridVector& Pos, FNodePtr& node);
 
 	bool OnlyTargetRemains();
 
-	void StreightenPath(FGridPath& Path);
+	void AddOtherConnected();
 
-	bool IsStraightLineToPos(const FGridVector& PosA, const FGridVector& PosB);
+	void StraightenPath(FGridPath& Path);
+
+	bool HitTestStraightLine(const FGridVector& PosA, const FGridVector& PosB, FGridVector& Hit);
 
 	UFUNCTION()
 	void ReleaseTargetNeighbors();

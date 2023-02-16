@@ -134,6 +134,8 @@ bool AGridSystemController::ArePositionsConnected(const FGridVector& Pos1, const
 	{
 		return false;
 	}
+	if (FGridVector::IsDiagnal(Pos1, Pos2))
+		return false;
 
 
 	TArray<AActor*> Actors = GetActorsAtPos(Pos1);
@@ -174,6 +176,9 @@ bool AGridSystemController::IsGridPosFree(FGridVector Pos)
 {
 	if (!UGridFunctionLib::IsGridPositionValid(Pos))
 		return false;
+	if (!GridPosHasFloor(Pos))
+		return false;
+	
 	auto Actors = GetActorsAtPos(Pos);
 	for (auto& Actor : Actors)
 	{
@@ -189,6 +194,20 @@ bool AGridSystemController::IsGridPosFree(FGridVector Pos)
 
 bool AGridSystemController::IsDiagnalConnected(const FGridVector& Pos1, const FGridVector& Pos2)
 {
+	if (ArePositionsConnected(Pos1, Pos2))
+		return true;
+
+	int32 Y = Pos1.Y - Pos2.Y;
+	FGridVector D = Pos1 - Pos2;
+	
+	UE_LOG(LogTemp, Warning, TEXT("Diag fail result: X = %i Y = %i"), D.X, Y);
+	if (FMath::Abs(D.X) + FMath::Abs(D.Y) != 2)
+	{
+		return false;
+
+	}
+	
+
 	auto Connectors = FGridVector::DiagnalConnectors(Pos1, Pos2);
 	if (Connectors.Num() == 0)
 		return false;
