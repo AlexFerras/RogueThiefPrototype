@@ -34,16 +34,7 @@ struct FActors
 
 	FORCEINLINE void Remove(AActor* Actor)
 	{
-		TArray<AActor*> CopyArray = Array;
-
-		if (Array.Contains(Actor))
-			for (int32 i = 0; i < Array.Num(); i++)
-			{
-				if (Array[i] == Actor)
-					CopyArray.RemoveAt(i);
-			}
-
-		Array = CopyArray;
+		Array.Remove(Actor);
 	}
 
 };
@@ -203,6 +194,7 @@ public:
 
 	bool IsDiagnalConnected(const FGridVector& Pos1, const FGridVector& Pos2);
 
+	TArray<FGridVector> GetConnectorsPositions(const FGridVector& Pos);
 
 	static bool NodesContain(TArray<TSharedPtr<struct FGridNode>> Array, FGridVector Coord);
 

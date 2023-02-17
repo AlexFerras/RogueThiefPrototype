@@ -148,7 +148,7 @@ TArray<FNodePtr> FPathFindToPointWorker::GetNodeNeighbors(FNodePtr node)
 
 int32 FPathFindToPointWorker::GetNodeCost(FNodePtr node)
 {
-	return node->Coord.DistanceTo(Target) + node->Cost();
+	return node->Coord.ManhattanDistanceTo(Target) + node->Cost();
 }
 
 void FPathFindToPointWorker::WorkOnNode()

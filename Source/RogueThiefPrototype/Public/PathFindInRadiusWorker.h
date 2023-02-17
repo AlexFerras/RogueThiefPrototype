@@ -34,7 +34,7 @@ public:
 
 	void StreightenPath(FGridPath& Path);
 
-	bool IsStraightLineToPos(const FGridVector& PosA, const FGridVector& PosB);
+	bool HitTestStraightLine(const FGridVector& PosA, const FGridVector& PosB, FGridVector& Hit, FGridVector IgnoredPos = FGridVector());
 
 	bool GetNodeOnPos(const FGridVector& Pos, FNodePtr& node);
 
@@ -64,4 +64,7 @@ public:
 private:
 	FRunnableThread* Thread;
 	bool bRunThread;
+
+	class FStraightenPathWorker* Worker1;
+	class FStraightenPathWorker* Worker2;
 };

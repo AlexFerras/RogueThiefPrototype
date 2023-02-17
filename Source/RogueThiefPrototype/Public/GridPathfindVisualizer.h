@@ -51,6 +51,7 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	UFUNCTION(BlueprintCallable)
 	void Pathfind();
 
 	void AddNeighborsToArray(TSharedPtr<FGridNode> Node);
@@ -82,6 +83,7 @@ public:
 
 	void StraightenPath(FGridPath& Path);
 
+	UFUNCTION(BlueprintCallable)
 	bool HitTestStraightLine(const FGridVector& PosA, const FGridVector& PosB, FGridVector& Hit);
 
 	UFUNCTION()

@@ -97,6 +97,8 @@ void AGridPathfindVisualizer::AddNeighborsToArray(TSharedPtr<FGridNode> Node)
 	}
 	OpenList.Remove(Node);
 	CloseList.Add(Node);
+
+	AddOtherConnected();
 }
 
 bool AGridPathfindVisualizer::IsTarget(TSharedPtr<FGridNode> Node)
@@ -124,6 +126,8 @@ bool AGridPathfindVisualizer::CreatePath(const FNodePtr Node, FGridPath& Path)
 
 
 }
+
+
 
 bool AGridPathfindVisualizer::GetNodeOnPos(const FGridVector& Pos, FNodePtr& node)
 {
@@ -219,6 +223,18 @@ void AGridPathfindVisualizer::StraightenPath(FGridPath& Path)
 		}
 		else
 		{
+			if (PA[i].Z != (PA.IsValidIndex(i - 1) ? PA[i - 1].Z : PA[i + 1].Z))
+			{
+				auto Poses = Grid->GetConnectorsPositions(PA[i]);
+				for (auto& Pos : Poses)
+				{
+					if (PA.Contains(Pos))
+					{
+						Nodes.Add(FNodePtr(new FGridNode(Pos, Nodes.Last())));
+					}
+				}
+			}
+
 			bool bFound = false;
 			for (int32 ri = i-1; ri > PA.Find(Nodes.Last()->Coord); ri--)
 			{
@@ -229,7 +245,7 @@ void AGridPathfindVisualizer::StraightenPath(FGridPath& Path)
 				}
 			}
 			if (!bFound)
-				Nodes.Add(FNodePtr(new FGridNode(PA[i-1], Nodes.Last())));
+				Nodes.Add(FNodePtr(new FGridNode(PA.IsValidIndex(i-1) ? PA[i-1] : PA[i], Nodes.Last())));
 			
 			//Nodes.Add(FNodePtr(new FGridNode(PA[i - 1], Nodes.Last())));
 			//Nodes.Add(FNodePtr(new FGridNode(PA[i], Nodes.Last())));
@@ -248,6 +264,10 @@ void AGridPathfindVisualizer::StraightenPath(FGridPath& Path)
 
 bool AGridPathfindVisualizer::HitTestStraightLine(const FGridVector& PosA, const FGridVector& PosB, FGridVector& Hit)
 {
+	if (PosA.Z != PosB.Z)
+		return true;
+
+
 	FVector Direction = UKismetMathLibrary::GetDirectionUnitVector(PosA.ToWorld(), PosB.ToWorld());
 	DrawDebugLine(GetWorld(), PosA.ToWorld()+FVector{0.f,0.f,30.f}, PosB.ToWorld()+FVector { 0.f, 0.f, 30.f }, FColor::Red, false, 20.f);
 
@@ -264,11 +284,14 @@ bool AGridPathfindVisualizer::HitTestStraightLine(const FGridVector& PosA, const
 
 	TFunction<void()> Lambda = [&]()
 	{
-		TestPos += Direction * 25;
+		TestPos += Direction * 50;
 		if (FGridVector::FromFVector(TestPos) != GridTestPos)
 			GridTestPos = FGridVector::FromFVector(TestPos);
 		DrawDebugLine(GetWorld(), TestPos + FVector{ 0.f,0.f,30.f }, TestPos + Left + FVector{ 0.f, 0.f, 30.f }, FColor::Red, false, 20.f);
 		DrawDebugLine(GetWorld(), TestPos + FVector{ 0.f,0.f,30.f }, TestPos + Right + FVector{ 0.f, 0.f, 30.f }, FColor::Red, false, 20.f);
+		PrintStraight(GridTestPos);
+		PrintStraight(FGridVector::FromFVector(TestPos + Left));
+		PrintStraight(FGridVector::FromFVector(TestPos + Right));
 
 	};
 	while (GridTestPos == Previous)
@@ -297,6 +320,8 @@ bool AGridPathfindVisualizer::HitTestStraightLine(const FGridVector& PosA, const
 		//{
 		//	PrintStraight(c);
 		//}
+		while (GridTestPos == Previous)
+			Lambda();
 
 		if (Positions.Contains(GridTestPos)
 			&& ((Grid->ArePositionsConnected(Previous, GridTestPos) || Grid->IsDiagnalConnected(Previous, GridTestPos))
@@ -307,15 +332,16 @@ bool AGridPathfindVisualizer::HitTestStraightLine(const FGridVector& PosA, const
 			)
 		{
 			Previous = GridTestPos;
-			Lambda();
-			PrintStraight(GridTestPos);
-			PrintStraight(FGridVector::FromFVector(TestPos + Left));
-			PrintStraight(FGridVector::FromFVector(TestPos + Right));
+
+
 
 		}
 		else
 		{
+			
 			Hit = Previous;
+			FVector HitDebug = Hit.ToWorld() + Direction * 50;
+			DrawDebugBox(GetWorld(), Hit, FVector{ 25.f,25.f,25.f }, FColor::Green, false, 20.f);
 			return true;
 		}
 	}
@@ -419,7 +445,7 @@ void AGridPathfindVisualizer::Init()
 	Positions = Grid->GetUnblockedSquarePositionsInRange(Start, FGridVector{ 1, Cost, Cost });
 	CurrentNode = TSharedPtr<FGridNode>(new FGridNode(Start, nullptr));
 	OpenList.Add(CurrentNode);
-	Pathfind();
+	//Pathfind();
 
 }
 

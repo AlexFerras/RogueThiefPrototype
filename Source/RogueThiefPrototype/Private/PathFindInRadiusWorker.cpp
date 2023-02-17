@@ -5,7 +5,10 @@
 #include "PathFindInRadiusWorker.h"
 #include "GridAffector.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "StraightenPathWorker.h"
 
+
+#define ADJUSTVALUES { {0, 1, 0}, {0, 0, 1}, {0, -1, 0}, {0, 0, -1}, {0, 1, 1}, {0, 1, -1}, {0, -1, 1}, {0, -1, -1} };
 
 FPathFindToRadiusWorker::FPathFindToRadiusWorker(AGridSystemController* grid, FGridVector start, int32 MaxCost)
 {
@@ -32,7 +35,27 @@ void FPathFindToRadiusWorker::Pathfind()
 	{
 		WorkOnNode();
 	}
-	bRunThread = false;
+	if (Paths.Num() < 50)
+	{
+		for (auto& Path : Paths)
+		{
+			StreightenPath(Path);
+		}
+	}
+
+	TArray<FGridPath> Paths1;
+	TArray<FGridPath> Paths2;
+
+	for (int32 i = 0; i < Paths.Num(); i++)
+	{
+		if (i % 2 == 0)
+			Paths1.Add(Paths[i]);
+		else
+			Paths2.Add(Paths[i]);
+	}
+	Worker1 = new FStraightenPathWorker(Grid, Paths1, Positions, 0);
+	Worker2 = new FStraightenPathWorker(Grid, Paths2, Positions, 1);
+
 }
 
 bool FPathFindToRadiusWorker::Init()
@@ -46,6 +69,22 @@ bool FPathFindToRadiusWorker::Init()
 uint32 FPathFindToRadiusWorker::Run()
 {
 	Pathfind();
+
+	while (bRunThread)
+	{
+		if (!Worker1->IsRunning() && !Worker2->IsRunning())
+		{
+			Paths.Empty();
+			Paths.Append(Worker1->ResultPaths);
+			Paths.Append(Worker2->ResultPaths);
+			Worker1->Stop();
+			delete Worker1;
+			Worker2->Stop();
+			delete Worker2;
+			return 0;
+
+		}
+	}
 	return 0;
 }
 
@@ -62,28 +101,26 @@ void FPathFindToRadiusWorker::Stop()
 
 void FPathFindToRadiusWorker::AddNeighborsToArray(TSharedPtr<FGridNode> Node)
 {
-	TArray<FGridVector> AdjustValues;
-	AdjustValues.Add({ 0,1,0 });
-	AdjustValues.Add({ 0,0,1 });
-	AdjustValues.Add({ 0,-1,0 });
-	AdjustValues.Add({ 0,0,-1 });
+	TArray<FGridVector> AdjustValues = ADJUSTVALUES;
+
 
 	for (int32 i = 0; i < AdjustValues.Num(); i++)
 	{
 		FGridVector TestPos = CurrentNode.Get()->Coord + AdjustValues[i];
 		if (Positions.Contains(TestPos) && !Grid->NodesContain(OpenList, TestPos) && !Grid->NodesContain(CloseList, TestPos))
 		{
-			if (!(Grid->ArePositionsConnected(CurrentNode.Get()->Coord, TestPos)))
-				continue;
-			TSharedPtr<FGridNode> NewNode(new FGridNode(TestPos, CurrentNode));
-			OpenList.Add(NewNode);
+			if ((Grid->ArePositionsConnected(CurrentNode.Get()->Coord, TestPos)) || (Grid->IsDiagnalConnected(CurrentNode.Get()->Coord, TestPos)))
+			{
+				TSharedPtr<FGridNode> NewNode(new FGridNode(TestPos, CurrentNode));
+				if (NewNode->Cost() < Cost)
+					OpenList.Add(NewNode);
+			}
 		}
 	}
-	if (true, true)
-	AddOtherConnected();
-
 	OpenList.Remove(Node);
 	CloseList.Add(Node);
+
+	AddOtherConnected();
 }
 
 void FPathFindToRadiusWorker::AddOtherConnected()
@@ -105,7 +142,7 @@ bool FPathFindToRadiusWorker::CreatePath(FNodePtr Node, FGridPath& Path)
 {
 	TArray<FGridVector> ResultPositions;
 	ResultPositions.Add(Node->Coord);
-	auto Parent = CurrentNode.Get()->P;
+	auto Parent = Node.Get()->P;
 	while (Parent)
 	{
 		ResultPositions.Add(Parent.Get()->Coord);
@@ -124,49 +161,168 @@ void FPathFindToRadiusWorker::StreightenPath(FGridPath& Path)
 {
 
 	TArray<FGridVector> PA = Path.ToArray();
-	Algo::Reverse(PA);
+
+	if (PA.Num() < 2)
+		return;
+
+	auto PathStart = PA[0];
+
+	TArray<AActor*> TempRemovedBlockers;
+	for (auto& Actor : Grid->GetActorsAtPos(PathStart))
+	{
+		if (Actor->Implements<UGridAffector>() && IGridAffector::Execute_IsBlock(Actor))
+		{
+			TempRemovedBlockers.Add(Actor);
+			Grid->FreeGridPosition(PathStart, Actor);
+		}
+	}
+
+	TFunction<void()> SetBlockersBack = [&]()
+	{
+		for (auto& Blocker : TempRemovedBlockers)
+		{
+			Grid->SetGridPosition(Blocker, PathStart);
+		}
+	};
+
+	PA.RemoveAt(0);
+	auto PathTarget = PA.Last();
+	FGridVector Hit;
+
 
 	TArray<FNodePtr> Nodes;
-	Nodes.Add(FNodePtr(new FGridNode(PA[0], nullptr)));
+	Nodes.Add(FNodePtr(new FGridNode(PathStart, nullptr)));
 
-	for (int32 i = 1; i < PA.Num(); i++)
+	if (!HitTestStraightLine(PathStart, PathTarget, Hit, PathStart))
 	{
-		if (IsStraightLineToPos(Nodes.Last()->Coord, PA[i]))
-		{
-			continue;
-		}
-		else
-			Nodes.Add(FNodePtr(new FGridNode(PA[i-1], Nodes.Last())));
+		Nodes.Add(FNodePtr(new FGridNode(PathTarget, Nodes.Last())));
+		FGridPath LocalP;
+		CreatePath(Nodes.Last(), LocalP);
+		SetBlockersBack();
+		Path = LocalP;
+		return;
 	}
-	CreatePath(Nodes[0], Path);
+
+		for (int32 i = 0; i < PA.Num(); i++)
+		{
+			if (!HitTestStraightLine(Nodes.Last()->Coord, PA[i], Hit, PathStart))
+			{
+				if (PA[i] == PathTarget)
+					Nodes.Add(FNodePtr(new FGridNode(PA[i], Nodes.Last())));
+			}
+			else
+			{
+				if (PA[i].Z != (PA.IsValidIndex(i - 1) ? PA[i - 1].Z : PA[i + 1].Z))
+				{
+					auto Poses = Grid->GetConnectorsPositions(PA[i]);
+					for (auto& Pos : Poses)
+					{
+						if (PA.Contains(Pos))
+						{
+							Nodes.Add(FNodePtr(new FGridNode(Pos, Nodes.Last())));
+						}
+					}
+				}
+
+				bool bFound = false;
+				for (int32 ri = i - 1; ri > PA.Find(Nodes.Last()->Coord); ri--)
+				{
+					if (HitTestStraightLine(PA[ri], PA[i], Hit, PathStart))
+					{
+						Nodes.Add(FNodePtr(new FGridNode(PA[ri + 1], Nodes.Last())));
+						bFound = true;
+					}
+				}
+				if (!bFound)
+					Nodes.Add(FNodePtr(new FGridNode(PA.IsValidIndex(i - 1) ? PA[i - 1] : PA[i], Nodes.Last())));
+
+				//Nodes.Add(FNodePtr(new FGridNode(PA[i - 1], Nodes.Last())));
+				//Nodes.Add(FNodePtr(new FGridNode(PA[i], Nodes.Last())));
+			}
+
+		}
+	if (!Grid->NodesContain(Nodes, PathTarget))
+	{
+		Nodes.Add(FNodePtr(new FGridNode(PathTarget, Nodes.Last())));
+	}
+
+	SetBlockersBack();
+	CreatePath(Nodes.Last(), Path);
 }
 
-bool FPathFindToRadiusWorker::IsStraightLineToPos(const FGridVector& PosA, const FGridVector& PosB)
+bool FPathFindToRadiusWorker::HitTestStraightLine(const FGridVector& PosA, const FGridVector& PosB, FGridVector& Hit, FGridVector IgnoredPos)
 {
+	if (PosA.Z != PosB.Z)
+		return true;
+
+
 	FVector Direction = UKismetMathLibrary::GetDirectionUnitVector(PosA.ToWorld(), PosB.ToWorld());
-	FVector Right = FRotator{ 0, 90, 0 }.RotateVector(Direction) * 45;
-	FVector Left = FRotator{ 0, -90, 0 }.RotateVector(Direction) * 45;
-	
+
+
+	FVector Right = FRotator{ 0, 90, 0 }.RotateVector(Direction) * 45.f;
+	FVector Left = FRotator{ 0, -90, 0 }.RotateVector(Direction) * 45.f;
 
 
 	FGridVector Previous = PosA;
 	FVector TestPos = PosA.ToWorld();
-	while (TestPos != PosB.ToWorld())
+	auto GridTestPos = FGridVector::FromFVector(TestPos);
+
+	Hit = FGridVector();
+
+	TFunction<void()> Lambda = [&]()
 	{
-		if (Positions.Contains(FGridVector::FromFVector(TestPos)) 
-			/* && Positions.Contains(FGridVector::ToFVector(TestPos + Right)) 
-			&& Positions.Contains(FGridVector::ToFVector(TestPos + Left))*/)
+		TestPos += Direction * 24.5f;
+		if (FGridVector::FromFVector(TestPos) != GridTestPos)
+			GridTestPos = FGridVector::FromFVector(TestPos);
+
+	};
+	while (GridTestPos == Previous)
+		Lambda();
+
+	if (FGridVector::FromFVector(TestPos) == PosB)
+	{
+		return !(Positions.Contains(GridTestPos)
+			&& ((Grid->ArePositionsConnected(Previous, GridTestPos) || Grid->IsDiagnalConnected(Previous, GridTestPos))
+				&& Grid->IsDiagnalConnected(GridTestPos, FGridVector::FromFVector(TestPos + Right))
+				&& Grid->IsDiagnalConnected(GridTestPos, FGridVector::FromFVector(TestPos + Left))
+				&& Grid->IsDiagnalConnected(Previous, FGridVector::FromFVector(TestPos + Right))
+				&& Grid->IsDiagnalConnected(Previous, FGridVector::FromFVector(TestPos + Left))
+				));
+
+	}
+
+
+	while (FGridVector::FromFVector(TestPos) != PosB)
+
+	{
+
+		//for (const auto& c : FGridVector::DiagnalConnectors(Previous, GridTestPos))
+		//{
+		//	PrintStraight(c);
+		//}
+
+		while (GridTestPos == Previous)
+			Lambda();
+
+		if (Positions.Contains(GridTestPos)
+			&& ((Grid->ArePositionsConnected(Previous, GridTestPos) || Grid->IsDiagnalConnected(Previous, GridTestPos))
+				&& Grid->IsDiagnalConnected(GridTestPos, FGridVector::FromFVector(TestPos + Right))
+				&& Grid->IsDiagnalConnected(GridTestPos, FGridVector::FromFVector(TestPos + Left))
+				&& Grid->IsDiagnalConnected(Previous, FGridVector::FromFVector(TestPos + Right))
+				&& Grid->IsDiagnalConnected(Previous, FGridVector::FromFVector(TestPos + Left))/* || Grid->IsDiagnalConnected(Previous, GridTestPos)*/)
+			)
 		{
-			Previous = FGridVector::FromFVector(TestPos);
-			TestPos = TestPos + Direction * 95;
-			UE_LOG(LogTemp, Warning, TEXT("TestPos: %s"), *TestPos.ToString());
+			Previous = GridTestPos;
 		}
 		else
-			return false;
+		{
+			Hit = Previous;
+			return true;
+		}
 	}
-	return true;
+	return false;
 
-	
+
 };
 
 
@@ -220,10 +376,12 @@ int32 FPathFindToRadiusWorker::GetNodeCost(FNodePtr node)
 
 void FPathFindToRadiusWorker::WorkOnNode()
 {
-	FGridPath Path;
-	CreatePath(CurrentNode, Path);
-	StreightenPath(Path);
-	Paths.Add(Path);
+	if (CurrentNode->Coord != Start)
+	{
+		FGridPath Path;
+		CreatePath(CurrentNode, Path);
+		Paths.Add(Path);
+	}
 
 	AddNeighborsToArray(CurrentNode);
 
