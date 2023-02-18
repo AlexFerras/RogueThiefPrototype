@@ -11,7 +11,8 @@ FStraightenPathWorker::FStraightenPathWorker(AGridSystemController* Grid, TArray
 	this->Grid = Grid;
 	this->Paths = Paths;
 	Positions = positions;
-	Thread = FRunnableThread::Create(this, TEXT("Straight"));
+	FString Name = FString::Printf(TEXT("Straight %i"), Index);
+	Thread = FRunnableThread::Create(this, *Name);
 	bRunThread = true;
 }
 
@@ -32,7 +33,10 @@ bool FStraightenPathWorker::Init()
 uint32 FStraightenPathWorker::Run()
 {
 	for (auto& Path : Paths)
-	{
+	{	
+		//if (!bRunThread)
+			//break;
+
 		StreightenPath(Path);
 		ResultPaths.Add(Path);
 	}
@@ -52,6 +56,9 @@ void FStraightenPathWorker::Stop()
 
 bool FStraightenPathWorker::HitTestStraightLine(const FGridVector& PosA, const FGridVector& PosB, FGridVector& Hit, FGridVector IgnoredPos)
 {
+	if (PosA == PosB)
+		return false;
+
 	if (PosA.Z != PosB.Z)
 		return true;
 
@@ -187,10 +194,22 @@ void FStraightenPathWorker::StreightenPath(FGridPath& Path)
 
 	for (int32 i = 0; i < PA.Num(); i++)
 	{
+		if (!HitTestStraightLine(PA[i], PathTarget, Hit, PathStart))
+		{
+			Nodes.Add(FNodePtr(new FGridNode(PA[i], Nodes.Last())));
+			break;
+		}
+
+
+
 		if (!HitTestStraightLine(Nodes.Last()->Coord, PA[i], Hit, PathStart))
 		{
 			if (PA[i] == PathTarget)
+			{
 				Nodes.Add(FNodePtr(new FGridNode(PA[i], Nodes.Last())));
+				break;
+			}
+			
 		}
 		else
 		{

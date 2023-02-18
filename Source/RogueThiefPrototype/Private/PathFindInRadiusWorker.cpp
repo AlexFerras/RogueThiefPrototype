@@ -70,7 +70,7 @@ uint32 FPathFindToRadiusWorker::Run()
 {
 	Pathfind();
 
-	while (bRunThread)
+	while (bRunThread && Grid->GetWorld())
 	{
 		if (!Worker1->IsRunning() && !Worker2->IsRunning())
 		{
