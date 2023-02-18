@@ -112,8 +112,8 @@ void FPathFindToRadiusWorker::AddNeighborsToArray(TSharedPtr<FGridNode> Node)
 			if ((Grid->ArePositionsConnected(CurrentNode.Get()->Coord, TestPos)) || (Grid->IsDiagnalConnected(CurrentNode.Get()->Coord, TestPos)))
 			{
 				TSharedPtr<FGridNode> NewNode(new FGridNode(TestPos, CurrentNode));
-				if (NewNode->Cost() < Cost)
-					OpenList.Add(NewNode);
+				//if (NewNode->Cost() < Cost)
+				OpenList.Add(NewNode);
 			}
 		}
 	}
@@ -129,7 +129,7 @@ void FPathFindToRadiusWorker::AddOtherConnected()
 	for (auto& Actor : Actors)
 	{
 		FGridVector Connected;
-		if (Actor->Implements<UGridAffector>() && IGridAffector::Execute_IsConnector(Actor, CurrentNode->Coord, Connected) && Grid->GridPosHasFloor(Connected)
+		if (Actor->Implements<UGridAffector>() && IGridAffector::Execute_IsConnector(Actor, CurrentNode->Coord, Connected) && Grid->IsGridPosFree(Connected)
 		 	&& !Grid->NodesContain(OpenList, Connected) && !Grid->NodesContain(CloseList, Connected))
 		{
 			FNodePtr NewNode(new FGridNode(Connected, CurrentNode));
@@ -212,7 +212,7 @@ void FPathFindToRadiusWorker::StreightenPath(FGridPath& Path)
 			}
 			else
 			{
-				if (PA[i].Z != (PA.IsValidIndex(i - 1) ? PA[i - 1].Z : PA[i + 1].Z))
+				if (PA[i].Z != (PA.IsValidIndex(i - 1) ? PA[i - 1].Z : PathStart.Z))
 				{
 					auto Poses = Grid->GetConnectorsPositions(PA[i]);
 					for (auto& Pos : Poses)

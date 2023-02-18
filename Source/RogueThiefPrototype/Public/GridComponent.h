@@ -68,7 +68,7 @@ public:
 	bool IsGridPosFree(FGridVector Pos);
 
 	UFUNCTION(BlueprintCallable, Category = "Grid")
-	void StartGridMovingToPos(const FGridVector& Pos);
+	void StartGridMovingToPos(const FGridVector& Pos, float AcceptRadius = 10.f);
 
 	UFUNCTION()
 	void AddDirectMovementInputToTarget(FVector Target, float AcceptRadius);

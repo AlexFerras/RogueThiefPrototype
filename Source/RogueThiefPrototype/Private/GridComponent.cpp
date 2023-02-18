@@ -8,6 +8,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "GridAffector.h"
 #include "PathFindInRadiusWorker.h"
+#include <Components/CapsuleComponent.h>
 
 // Sets default values for this component's properties
 UGridComponent::UGridComponent()
@@ -209,21 +210,21 @@ bool UGridComponent::IsGridPosFree(FGridVector Pos)
 
 
 
-void UGridComponent::StartGridMovingToPos(const FGridVector& Pos)
+void UGridComponent::StartGridMovingToPos(const FGridVector& Pos, float AcceptRadius)
 {
-	AddDirectMovementInputToTarget(Pos.ToWorld(), 1.f);
+	FVector Target = { Pos.ToWorld().X, Pos.ToWorld().Y, GetOwner()->GetActorLocation().Z };
+
+	AddDirectMovementInputToTarget(Target, AcceptRadius);
 
 }
 
 void UGridComponent::AddDirectMovementInputToTarget(FVector Target, float AcceptRadius)
 {
 	APawn* Owner = Cast<APawn>(GetOwner());
-	FVector OwnerLoc = UGridFunctionLib::ConvertWorldToGrid(Owner->GetActorLocation()).ToWorld();
-	FVector Direction = UKismetMathLibrary::GetDirectionUnitVector(OwnerLoc, Target);
-	if (!(UGridFunctionLib::ConvertWorldToGrid(Owner->GetActorLocation()) == UGridFunctionLib::ConvertWorldToGrid(Target)))
+	FVector Direction = UKismetMathLibrary::GetDirectionUnitVector(Owner->GetActorLocation(), Target);
+	if (FVector::Dist2D(Owner->GetActorLocation(), Target) > AcceptRadius)
 	{
 		Owner->AddMovementInput(Direction);
-		UE_LOG(LogTemp, Warning, TEXT("AddedMovementInput to %s"), *Direction.ToString());
 		FTimerDelegate NextDelegate = FTimerDelegate::CreateUObject(this, &UGridComponent::AddDirectMovementInputToTarget, Target, AcceptRadius);
 		GetOwner()->GetWorldTimerManager().SetTimerForNextTick(NextDelegate);
 	}

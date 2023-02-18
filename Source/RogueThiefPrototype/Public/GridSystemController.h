@@ -138,8 +138,8 @@ struct FGridNode
 	FORCEINLINE int32 Cost() const
 	{
 		if (P)
-			return 1 + P->Cost();
-		return 1;
+			return this->Coord.EuclideanDistTo(P->Coord) + P->Cost();
+		return 0;
 	}
 
 	UPROPERTY()

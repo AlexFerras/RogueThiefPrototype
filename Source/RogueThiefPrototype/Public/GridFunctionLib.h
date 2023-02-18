@@ -90,12 +90,12 @@ struct FGridVector
 
 	}
 
-	FORCEINLINE int32 ManhattanDistanceTo(const FGridVector& B) const
+	FORCEINLINE int32 ManhattanDistTo(const FGridVector& B) const
 	{
 		return FMath::Abs(this->X - B.X) + FMath::Abs(this->Y - B.Y) + FMath::Abs(this->Z - B.Z);
 	}
 
-	FORCEINLINE int32 DiagonalDistanceTo(const FGridVector& B) const
+	FORCEINLINE int32 DiagonalDistTo(const FGridVector& B) const
 	{
 		int32 dx = abs(B.X - this->X);
 		int32 dy = abs(B.Y - this->Y);
@@ -107,8 +107,11 @@ struct FGridVector
 		int32 straightSteps = max - min;
 
 		return sqrt(2) * diagonalSteps + straightSteps;
+	}
 
-
+	FORCEINLINE int32 EuclideanDistTo(const FGridVector& B) const
+	{
+		return (*this - B).Length();
 	}
 
 
@@ -176,7 +179,16 @@ struct FGridPath
 
 	FORCEINLINE int32 Cost() const
 	{
-		return Path.Num();
+		int32 Distance = 0;
+		for (int32 i = 0; i < Path.Num(); i++)
+		{
+			if (Path.IsValidIndex(i + 1))
+			{
+				Distance += Path[i].EuclideanDistTo(Path[i + 1]);
+			}
+		}
+		return Distance;
+
 	};
 
 	FORCEINLINE TArray<FGridVector> ToArray() const
